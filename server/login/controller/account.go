@@ -8,6 +8,7 @@ import (
 	"sgserver/net"
 	"sgserver/server/login/model"
 	"sgserver/server/login/proto"
+	"sgserver/server/models"
 	"sgserver/utils"
 	"time"
 )
@@ -37,7 +38,7 @@ func (a *Account) login(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 		log.Println(err)
 		return
 	}
-	user := &model.User{}
+	user := &models.User{}
 	ok, err := db.Engine.Table(user).Where("username=?", loginReq.Username).Get(user)
 	if err != nil {
 		log.Println("用户表查询错误！", err)
@@ -67,6 +68,7 @@ func (a *Account) login(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 		Hardware: loginReq.Hardware, State: model.Login,
 	}
 	db.Engine.Table(ul).Insert(ul)
+
 	//最后一次登录记录
 	ll := &model.LoginLast{}
 	ok, _ = db.Engine.Table(ll).Where("uid=?", user.UId).Get(ll)

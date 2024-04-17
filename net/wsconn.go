@@ -1,5 +1,7 @@
 package net
 
+import "sync"
+
 // ReqBody 接收前端结构体
 type ReqBody struct {
 	Seq   int64       `json:"seq"`
@@ -16,9 +18,31 @@ type RspBody struct {
 	Msg  interface{} `json:"msg"`
 }
 
+type WsContext struct {
+	mutex    sync.RWMutex
+	property map[string]interface{}
+}
+
+func (ws *WsContext) Set(key string, values interface{}) {
+	ws.mutex.Lock()
+	defer ws.mutex.Unlock()
+	ws.property[key] = values
+}
+
+func (ws *WsContext) Get(key string) interface{} {
+	ws.mutex.RLock()
+	defer ws.mutex.RUnlock()
+	values, ok := ws.property[key]
+	if ok {
+		return values
+	}
+	return nil
+}
+
 type WsMsgReq struct {
-	Body *ReqBody
-	Conn WSConn
+	Body    *ReqBody
+	Conn    WSConn
+	Context *WsContext
 }
 
 type WsMsgRsp struct {
@@ -38,4 +62,11 @@ const HandshakeMsg = "handshake"
 
 type Handshake struct {
 	Key string `json:"key"`
+}
+
+const HeartbeatMsg = "heartbeat"
+
+type Heartbeat struct {
+	CTime int64 `json:"ctime"`
+	STime int64 `json:"stime"`
 }

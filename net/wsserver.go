@@ -3,11 +3,14 @@ package net
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/forgoer/openssl"
 	"github.com/gorilla/websocket"
+	"github.com/mitchellh/mapstructure"
 	"log"
 	"sgserver/utils"
 	"sync"
+	"time"
 )
 
 // websocket服务
@@ -18,15 +21,22 @@ type wsServer struct {
 	Seq          int64                  //状态信息
 	propertyLock sync.RWMutex           //读写锁
 	property     map[string]interface{} //存储一些信息
+	needSecret   bool
 }
 
-func NewWsServer(wsConn *websocket.Conn) *wsServer {
-	return &wsServer{
-		wsConn:   wsConn,
-		outChan:  make(chan *WsMsgRsp, 1000),
-		property: make(map[string]interface{}),
-		Seq:      0,
+var cid int64
+
+func NewWsServer(wsConn *websocket.Conn, needSecret bool) *wsServer {
+	s := &wsServer{
+		wsConn:     wsConn,
+		outChan:    make(chan *WsMsgRsp, 1000),
+		property:   make(map[string]interface{}),
+		Seq:        0,
+		needSecret: needSecret,
 	}
+	cid++
+	s.SetProperty("cid", cid)
+	return s
 }
 
 func (w *wsServer) Router(router *Router) {
@@ -74,19 +84,21 @@ func (w *wsServer) Start() {
 	go w.readMsgLoop()
 }
 
+// 读通道然后处理发送给前端
 func (w *wsServer) writeMsgLoop() {
 	for {
 		select {
 		case msg := <-w.outChan:
-			w.Write(msg)
+			w.Write(msg.Body)
 		}
 	}
 }
 
+// 读到客户端发送过来的数据,发送到通道中就可以
 func (w *wsServer) readMsgLoop() {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Fatal(err)
+			log.Println("服务端捕捉到异常", err)
 			w.Close()
 		}
 	}()
@@ -96,39 +108,53 @@ func (w *wsServer) readMsgLoop() {
 			log.Println("收消息出现错误！", err)
 			break
 		}
-		//收到消息会解析消息
-		//1.解压unzip
+		//收到消息 解析消息 前端发送过来的消息 就是json格式
+		//1. data 解压 unzip
 		data, err = utils.UnZip(data)
 		if err != nil {
-			log.Println("解压失败！，格式不合法！")
+			log.Println("解压数据出错，非法格式：", err)
 			continue
 		}
-		//2.前端消息是加密消息 需要进行解密
-		secretKey, err := w.GetProperty("secretKey")
-		if err == nil {
-			//有加密
-			key := secretKey.(string)
-			//客户端传过来的数据是加密的 需要解密
-			d, err := utils.AesCBCDecrypt(data, []byte(key), []byte(key), openssl.ZEROS_PADDING)
-			if err != nil {
-				log.Println("数据格式有误，解密失败:", err)
-				//出错后 发起握手
-				w.Handshake()
-			} else {
-				data = d
+		//2. 前端的消息 加密消息 进行解密
+		if w.needSecret {
+			secretKey, err := w.GetProperty("secretKey")
+			if err == nil {
+				//有加密
+				key := secretKey.(string)
+				//客户端传过来的数据是加密的 需要解密
+				d, err := utils.AesCBCDecrypt(data, []byte(key), []byte(key), openssl.ZEROS_PADDING)
+				if err != nil {
+					log.Println("数据格式有误，解密失败:", err)
+					//出错后 发起握手
+					w.Handshake()
+				} else {
+					data = d
+				}
 			}
 		}
-		//3.data转为body
+
+		//3. data 转为body
 		body := &ReqBody{}
 		err = json.Unmarshal(data, body)
 		if err != nil {
-			log.Println("数据格式有误！非法格式", err)
+			log.Println("服务端json格式解析有误，非法格式:", err)
 		} else {
-			//拿到前端的代码
-			req := &WsMsgReq{Conn: w, Body: body}
-			//返回前端的代码
+			context := &WsContext{property: make(map[string]interface{})}
+
+			// 获取到前端传递的数据了，拿上这些数据 去具体的业务进行处理
+			req := &WsMsgReq{Conn: w, Body: body, Context: context}
 			rsp := &WsMsgRsp{Body: &RspBody{Name: body.Name, Seq: req.Body.Seq}}
-			w.router.Run(req, rsp)
+			if req.Body.Name == HeartbeatMsg {
+				h := &Heartbeat{}
+				mapstructure.Decode(body.Msg, h)
+				h.STime = time.Now().UnixNano() / 1e6
+				rsp.Body.Msg = h
+			} else {
+				if w.router != nil {
+					log.Println("req", req)
+					w.router.Run(req, rsp)
+				}
+			}
 			w.outChan <- rsp
 		}
 	}
@@ -140,8 +166,9 @@ func (w *wsServer) Close() {
 	_ = w.wsConn.Close()
 }
 
-func (w *wsServer) Write(msg *WsMsgRsp) {
-	data, err := json.Marshal(msg.Body)
+func (w *wsServer) Write(body interface{}) {
+	fmt.Println("写给客户端数据", body)
+	data, err := json.Marshal(body)
 	if err != nil {
 		log.Println(err)
 	}
@@ -155,7 +182,11 @@ func (w *wsServer) Write(msg *WsMsgRsp) {
 	}
 	//压缩
 	if data, err := utils.Zip(data); err == nil {
-		w.wsConn.WriteMessage(websocket.BinaryMessage, data)
+		err := w.wsConn.WriteMessage(websocket.BinaryMessage, data)
+		if err != nil {
+			log.Println("写数据出错", err)
+			return
+		}
 	}
 }
 
@@ -180,6 +211,7 @@ func (w *wsServer) Handshake() {
 		}
 		if data, err := utils.Zip(data); err == nil { //不报错
 			w.wsConn.WriteMessage(websocket.BinaryMessage, data)
+			//fmt.Println("握手成功！")
 		}
 	}
 }
