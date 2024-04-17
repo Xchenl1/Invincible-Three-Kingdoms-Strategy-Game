@@ -3,10 +3,7 @@ package net
 import (
 	"log"
 	"strings"
-<<<<<<< HEAD
-=======
 	"sync"
->>>>>>> remote-master
 )
 
 type HandlerFunc func(req *WsMsgReq, rsp *WsMsgRsp)
