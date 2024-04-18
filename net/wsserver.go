@@ -88,6 +88,7 @@ func (w *wsServer) Start() {
 func (w *wsServer) writeMsgLoop() {
 	for {
 		select {
+		// 有缓冲区和无缓冲区
 		case msg := <-w.outChan:
 			w.Write(msg.Body)
 		}
@@ -146,7 +147,9 @@ func (w *wsServer) readMsgLoop() {
 			rsp := &WsMsgRsp{Body: &RspBody{Name: body.Name, Seq: req.Body.Seq}}
 			if req.Body.Name == HeartbeatMsg {
 				h := &Heartbeat{}
+				// body.Msg 中的数据解码并映射到结构体 h 中
 				mapstructure.Decode(body.Msg, h)
+				// 获取当前时间并将其转换为毫秒级别的时间戳
 				h.STime = time.Now().UnixNano() / 1e6
 				rsp.Body.Msg = h
 			} else {
@@ -168,6 +171,7 @@ func (w *wsServer) Close() {
 
 func (w *wsServer) Write(body interface{}) {
 	fmt.Println("写给客户端数据", body)
+	// 序列化
 	data, err := json.Marshal(body)
 	if err != nil {
 		log.Println(err)
@@ -191,11 +195,13 @@ func (w *wsServer) Write(body interface{}) {
 }
 
 func (w *wsServer) Handshake() {
+	// 获取加密信息
 	secretKey := ""
 	key, err := w.GetProperty("secretKey")
 	if err == nil {
 		secretKey = key.(string)
 	} else {
+		// 若出错，则生成随机16位随机字符串
 		secretKey = utils.RandSeq(16)
 	}
 	handshake := &Handshake{
@@ -204,6 +210,7 @@ func (w *wsServer) Handshake() {
 	body := &RspBody{Name: HandshakeMsg, Msg: handshake}
 
 	if data, err := json.Marshal(body); err == nil {
+		// 若密钥不为空，则需要设置密钥
 		if secretKey != "" {
 			w.SetProperty("secretKey", secretKey)
 		} else {
