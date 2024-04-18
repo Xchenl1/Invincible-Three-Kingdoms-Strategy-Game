@@ -69,7 +69,7 @@ func (w *wsServer) Addr() string {
 	return w.wsConn.RemoteAddr().String()
 }
 
-func (w *wsServer) Push(name string, data interface{}) {
+func (w *wsServer) Push(name string, data interface{}) { // 推送到通道中
 	rep := &WsMsgRsp{Body: &RspBody{
 		Name: name,
 		Msg:  data,
