@@ -217,7 +217,10 @@ func (w *wsServer) Handshake() {
 			w.RemoveProperty("secretKey")
 		}
 		if data, err := utils.Zip(data); err == nil { //不报错
-			w.wsConn.WriteMessage(websocket.BinaryMessage, data)
+			err := w.wsConn.WriteMessage(websocket.BinaryMessage, data)
+			if err != nil {
+				return
+			}
 			//fmt.Println("握手成功！")
 		}
 	}
