@@ -22,7 +22,7 @@ type MiddlewareFunc func(handlerFunc HandlerFunc) HandlerFunc
 type group struct {
 	mutex         sync.RWMutex
 	prefix        string
-	handlerMap    map[string]HandlerFunc
+	handlerMap    map[string]HandlerFunc //存储路由
 	middlewareMap map[string][]MiddlewareFunc
 	middlewares   []MiddlewareFunc
 }

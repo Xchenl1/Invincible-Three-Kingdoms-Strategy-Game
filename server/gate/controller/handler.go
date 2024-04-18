@@ -16,8 +16,8 @@ var GateHandler = &Handler{
 type Handler struct {
 	proxyMutex sync.Mutex
 	proxyMap   map[string]map[int64]*net.ProxyClient // 代理地址-> 客户端连接(游戏客户端id-> 连接)
-	loginProxy string
-	gameProxy  string
+	loginProxy string                                //代理登录服务
+	gameProxy  string                                //代理游戏服务
 }
 
 func (h *Handler) Router(r *net.Router) {

@@ -21,7 +21,7 @@ type wsServer struct {
 	Seq          int64                  //状态信息
 	propertyLock sync.RWMutex           //读写锁
 	property     map[string]interface{} //存储一些信息
-	needSecret   bool
+	needSecret   bool                   //是否加密
 }
 
 var cid int64
