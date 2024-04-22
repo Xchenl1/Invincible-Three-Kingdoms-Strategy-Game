@@ -39,6 +39,7 @@ func (a *Account) login(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 		return
 	}
 	user := &models.User{}
+	// 查询用户数据
 	ok, err := db.Engine.Table(user).Where("username=?", loginReq.Username).Get(user)
 	if err != nil {
 		log.Println("用户表查询错误！", err)
@@ -48,12 +49,14 @@ func (a *Account) login(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 		rsp.Body.Code = constant.UserNotExist
 		return
 	}
+	// 密码MD5加密
 	pwd := utils.Password(loginReq.Password, user.Passcode)
 	if pwd != user.Passwd {
 		rsp.Body.Code = constant.PwdIncorrect
 		return
 	}
 	//jwt加密 A.B.C A定义加密算法 B定义放入的数据  C部分根据A+B生成加密字符串
+	// 重新生成token
 	token, _ := utils.Award(user.UId)
 	rsp.Body.Code = constant.OK
 	loginRes.Uid = user.UId

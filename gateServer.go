@@ -23,6 +23,7 @@ func main() {
 	port := config.File.MustValue("gate_server", "port", "8004")
 
 	s := net.NewServer(host + ":" + port)
+	// 需要加密
 	s.NeedSecret(true)
 
 	fmt.Println("项目启动在", host, ":", port, "登录服务器启动成功")

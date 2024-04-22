@@ -9,6 +9,7 @@ import (
 	"sync"
 )
 
+// GateHandler 网关的全局变量
 var GateHandler = &Handler{
 	proxyMap: make(map[string]map[int64]*net.ProxyClient),
 }
@@ -31,7 +32,7 @@ func (h *Handler) Router(r *net.Router) {
 func (h *Handler) all(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	proxyStr := req.Body.Proxy
 
-	// 判断是 name 是否是以 account. 开头
+	// 判断需要需要生成哪种客户端
 	if isAccount(req.Body.Name) {
 		proxyStr = h.loginProxy
 	} else {
@@ -43,7 +44,7 @@ func (h *Handler) all(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 		return
 	}
 
-	// ws://127.0.0.1:8003 的 value：map[int64]*net.ProxyClient，如果为空，重新赋值
+	// ws://127.0.0.1:8003 的 value：map[int64]*net.ProxyClient 检测代理客户端是否存在，如果为空，重新赋值
 	h.proxyMutex.Lock()
 	_, ok := h.proxyMap[proxyStr]
 	if !ok {
@@ -61,17 +62,16 @@ func (h *Handler) all(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 
 	// m[cid]
 	cid := c.(int64)
+	// 取 cid 并根据cid创建代理客户端
 	proxy, ok := h.proxyMap[proxyStr][cid]
 	if !ok {
-		//没有 建立连接 并发起调用
+		//创建代理客户端
 		proxy = net.NewProxyClient(proxyStr)
 		h.proxyMutex.Lock()
 		h.proxyMap[proxyStr][cid] = proxy
 		h.proxyMutex.Unlock()
 
 		err := proxy.Connect()
-
-		//fmt.Println(err)
 
 		if err != nil {
 			h.proxyMutex.Lock()
@@ -83,6 +83,7 @@ func (h *Handler) all(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 		proxy.SetProperty("cid", cid)
 		proxy.SetProperty("proxy", proxyStr)
 		proxy.SetProperty("gateConn", req.Conn)
+		// 将wsserver 放在代理服务中
 		proxy.SetOnPush(h.onPush)
 	}
 

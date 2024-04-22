@@ -23,7 +23,6 @@ func (c *ProxyClient) SetProperty(key string, data interface{}) {
 func (c *ProxyClient) Connect() error {
 	// 去连接 websocket 服务端
 	// 通过 Dialer 连接websocket服务器
-
 	var dialer = websocket.Dialer{
 		Subprotocols:     []string{"p1", "p2"},
 		ReadBufferSize:   1024,
@@ -34,7 +33,6 @@ func (c *ProxyClient) Connect() error {
 	// 获取 ws 连接
 	ws, _, err := dialer.Dial(c.proxy, nil)
 	if err == nil {
-		// 如果连接失败，重新创建 clientConn
 		c.conn = newClientConn(ws)
 		fmt.Println("创建ws连接！")
 		if !c.conn.Start() {

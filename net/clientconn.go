@@ -69,7 +69,7 @@ func (c *ClientConn) Start() bool {
 }
 
 func (c *ClientConn) waitHandshake() bool {
-	// 万一程序出现问题 一直响应不到
+	// 万一程序出现问题 一直响应不到；5 秒响应与其他服务的握手
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	// 等待握手的消息
@@ -103,12 +103,11 @@ func (c *ClientConn) wsReadLoop() {
 			log.Println("解压失败！，格式不合法！", err)
 			continue
 		}
-		//2.前端消息是加密消息 需要进行解密
 		secretKey, err := c.GetProperty("secretKey")
 		if err == nil {
-			//有加密
+			// 有加密
 			key := secretKey.(string)
-			//客户端传过来的数据是加密的 需要解密
+			// 客户端传过来的数据是加密的 需要解密
 			d, err := utils.AesCBCDecrypt(data, []byte(key), []byte(key), openssl.ZEROS_PADDING)
 			if err != nil {
 				log.Println("数据格式有误，解密失败:", err)
@@ -244,7 +243,7 @@ func (c *ClientConn) SetOnPush(hook func(conn *ClientConn, body *RspBody)) {
 }
 
 func (c *ClientConn) Send(name string, msg interface{}) (*RspBody, error) {
-	// 把请求 发送给 代理服务器 登陆服务器
+	// 把请求 发送给 游戏服务器 登陆服务器
 	c.syncCtxLock.Lock()
 	c.Seq += 1
 	seq := c.Seq

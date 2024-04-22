@@ -198,6 +198,7 @@ func (w *wsServer) Handshake() {
 	// 获取加密信息
 	secretKey := ""
 	key, err := w.GetProperty("secretKey")
+	fmt.Println("进行加密连接", secretKey)
 	if err == nil {
 		secretKey = key.(string)
 	} else {
@@ -221,7 +222,6 @@ func (w *wsServer) Handshake() {
 			if err != nil {
 				return
 			}
-			//fmt.Println("握手成功！")
 		}
 	}
 }
