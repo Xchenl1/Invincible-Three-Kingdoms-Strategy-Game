@@ -101,6 +101,7 @@ func (h *Handler) all(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	}
 }
 
+// 这个是 wsServer 的客户端连接
 func (h *Handler) onPush(conn *net.ClientConn, body *net.RspBody) {
 	gateConn, err := conn.GetProperty("gateConn")
 

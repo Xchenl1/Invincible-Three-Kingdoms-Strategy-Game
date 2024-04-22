@@ -33,6 +33,7 @@ func NewSyncCtx() *syncCtx {
 }
 
 func (s *syncCtx) wait() *RspBody {
+	// 15 秒等待服务发送信息
 	defer s.cancel()
 	select {
 	case msg := <-s.outChan:
