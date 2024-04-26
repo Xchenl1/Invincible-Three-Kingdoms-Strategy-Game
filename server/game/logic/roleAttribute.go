@@ -11,6 +11,7 @@ import (
 	"sync"
 )
 
+// DefaultRoleAttrService 主要是联盟、征收次数、以及收藏位置
 var DefaultRoleAttrService = &RoleAttrService{
 	attrs: make(map[int]*data.RoleAttribute),
 }

@@ -51,8 +51,11 @@ func (r *generalHandler) drawGeneral(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	rspObj := &model.DrawGeneralRsp{}
 	rsp.Body.Code = constant.OK
 	rsp.Body.Msg = rspObj
+
 	role, _ := req.Conn.GetProperty("role")
 	rid := role.(*data.Role).RId
+
+	// 计算抽卡所需要的金钱是否足够
 	cost := gameConfig.Base.General.DrawGeneralCost * reqObj.DrawTimes
 	if !logic.RoleResService.IsEnoughGold(rid, cost) {
 		rsp.Body.Code = constant.GoldNotEnough
@@ -60,6 +63,7 @@ func (r *generalHandler) drawGeneral(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	}
 	limit := gameConfig.Base.General.Limit
 
+	// 抽武将卡
 	gs, err := logic.DefaultGeneralService.GetGenerals(rid)
 	if err != nil {
 		rsp.Body.Code = err.(*common.MyError).Code()

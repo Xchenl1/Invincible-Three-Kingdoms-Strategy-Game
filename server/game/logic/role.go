@@ -19,9 +19,9 @@ type RoleService struct {
 }
 
 func (r *RoleService) EnterServer(uid int, rsp *model.EnterServerRsp, req *net.WsMsgReq) error {
-	//获取角色
-	//根据用户id 查找角色
+	//获取角色 根据用户id 查找角色
 	role := &data.Role{}
+	// 开启事务
 	session := db.Engine.NewSession()
 	defer session.Close()
 	if err := session.Begin(); err != nil {
@@ -65,6 +65,7 @@ func (r *RoleService) EnterServer(uid int, rsp *model.EnterServerRsp, req *net.W
 			return common.New(constant.DBError, "数据库出错")
 		}
 	}
+	// 强制转换
 	rsp.RoleRes = roleRes.ToModel().(model.RoleRes)
 
 	// 重新生成 token

@@ -28,6 +28,7 @@ func (rh *RoleHandler) InitRouter(r *net.Router) {
 	g.AddRouter("posTagList", rh.posTagList, middleware.CheckRole())
 }
 
+// 登录游戏
 func (rh *RoleHandler) enterServer(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	// 验证 session 是否合法 取出登录用户的id 根据id 查询用户的游戏角色 如果有就继续 没有就处理错误
 	//先验证session是否合法
@@ -37,7 +38,7 @@ func (rh *RoleHandler) enterServer(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	rsp.Body.Seq = req.Body.Seq
 	rsp.Body.Name = req.Body.Name
 
-	//解析session 数据到 reqobj
+	//解析 session 数据到 reqobj
 	err := mapstructure.Decode(req.Body.Msg, reqObj)
 	if err != nil {
 		rsp.Body.Code = constant.InvalidParam
@@ -66,6 +67,7 @@ func (rh *RoleHandler) enterServer(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 
 }
 
+// 我的财产
 func (rh *RoleHandler) myproperty(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 	reqObj := &model.MyRolePropertyReq{}
 	rspObj := &model.MyRolePropertyRsp{}
