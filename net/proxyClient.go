@@ -13,11 +13,16 @@ type ProxyClient struct {
 	conn  *ClientConn
 }
 
+func NewProxyClient(proxy string) *ProxyClient {
+	return &ProxyClient{
+		proxy: proxy,
+	}
+}
+
 func (c *ProxyClient) SetProperty(key string, data interface{}) {
 	if c.conn != nil {
 		c.conn.SetProperty(key, data)
 	}
-
 }
 
 func (c *ProxyClient) Connect() error {
@@ -52,13 +57,6 @@ func (c *ProxyClient) Send(name string, msg interface{}) (*RspBody, error) {
 	if c.conn != nil {
 		//fmt.Println("发送数据", c.proxy)
 		return c.conn.Send(name, msg)
-
 	}
 	return nil, errors.New("连接未发现...")
-}
-
-func NewProxyClient(proxy string) *ProxyClient {
-	return &ProxyClient{
-		proxy: proxy,
-	}
 }

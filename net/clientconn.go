@@ -37,7 +37,7 @@ func (s *syncCtx) wait() *RspBody {
 	defer s.cancel()
 	select {
 	case msg := <-s.outChan:
-		fmt.Println("代理服务器发来的数据", msg)
+		fmt.Println("各服务发来的数据", msg)
 		return msg
 	case <-s.ctx.Done():
 		fmt.Println("----------------")
@@ -266,7 +266,6 @@ func (c *ClientConn) Send(name string, msg interface{}) (*RspBody, error) {
 			rsp.Code = constant.ProxyConnectError
 		} else {
 			rsp = r
-			//fmt.Println("走这了")
 		}
 	}
 	c.syncCtxLock.Lock()
