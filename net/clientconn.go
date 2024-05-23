@@ -37,7 +37,7 @@ func (s *syncCtx) wait() *RspBody {
 	defer s.cancel()
 	select {
 	case msg := <-s.outChan:
-		fmt.Println("各服务发来的数据", msg)
+		fmt.Println("服务端发来的数据:", msg)
 		return msg
 	case <-s.ctx.Done():
 		fmt.Println("----------------")
