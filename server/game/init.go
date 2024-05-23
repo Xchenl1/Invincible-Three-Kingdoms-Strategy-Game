@@ -25,6 +25,8 @@ func Init() {
 	logic.CityFacilityService.Load()
 	//加载武将的相关配置
 	general.General.Load()
+	//
+	general.GeneralBasic.Load()
 	//加载技能配置信息
 	gameConfig.Skill.Load()
 
@@ -37,6 +39,7 @@ func Init() {
 	//加载所有的角色属性
 	logic.DefaultRoleAttrService.Load()
 	logic.BeforeInit()
+	// 加载
 
 	initRouter()
 }

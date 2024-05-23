@@ -176,6 +176,20 @@ func (g *ArmyService) IsRepeat(rid int, cfgId int) bool {
 	return false
 }
 
+func (g *ArmyService) Get(id int) *data.Army {
+	army := &data.Army{}
+	ok, err := db.Engine.Table(army).Where("id=?", id).Get(army)
+	if err != nil {
+		log.Println("军队查询出错", err)
+		return nil
+	}
+	if ok {
+		g.updateGenerals(army)
+		return army
+	}
+	return nil
+}
+
 func armyIsInView(rid, x, y int) bool {
 	//简单点 先设为true
 	return true

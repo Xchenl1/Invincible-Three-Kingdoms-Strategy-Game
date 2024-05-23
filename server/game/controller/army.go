@@ -11,6 +11,7 @@ import (
 	"sgserver/server/game/middleware"
 	"sgserver/server/game/model"
 	"sgserver/server/game/model/data"
+	"time"
 )
 
 var ArmyHandler = &armyHandler{}
@@ -23,6 +24,7 @@ func (gh *armyHandler) InitRouter(r *net.Router) {
 	g.Use(middleware.Log())
 	g.AddRouter("myList", gh.myList, middleware.CheckRole())
 	g.AddRouter("dispose", gh.dispose, middleware.CheckRole())
+	g.AddRouter("conscript", gh.conscript, middleware.CheckRole())
 }
 
 func (ah *armyHandler) myList(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
@@ -177,4 +179,102 @@ func (gh *armyHandler) dispose(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
 
 	//队伍
 	rspObj.Army = army.ToModel().(model.Army)
+}
+
+// 征兵
+func (gh *armyHandler) conscript(req *net.WsMsgReq, rsp *net.WsMsgRsp) {
+	reqobj := &model.ConscriptReq{}
+	mapstructure.Decode(req.Body.Msg, reqobj)
+	rspobj := &model.ConscriptRsp{}
+	rsp.Body.Msg = rspobj
+	rsp.Body.Code = constant.OK
+
+	// 征兵 更新征兵的数量和征兵的完成时间，以及状态
+	// 判断逻辑  征兵是否可以进行 资源是否充足 参数是否正常 募兵所的设施 等级
+
+	// 参数是否合法
+	if reqobj.ArmyId <= 0 || len(reqobj.Cnts) != 3 {
+		rsp.Body.Code = constant.InvalidParam
+		return
+	}
+	if reqobj.Cnts[0] < 0 || reqobj.Cnts[1] < 0 || reqobj.Cnts[2] < 0 {
+		rsp.Body.Code = constant.InvalidParam
+		return
+	}
+	// 角色
+	r, _ := req.Conn.GetProperty("role")
+	role := r.(*data.Role)
+	// 军队是否存在
+	army := logic.DefaultArmyService.Get(reqobj.ArmyId)
+	if army == nil {
+		rsp.Body.Code = constant.ArmyNotFound
+		return
+	}
+	if role.RId != army.RId {
+		rsp.Body.Code = constant.ArmyNotMe
+		return
+	}
+	// 募兵所
+	level := logic.CityFacilityService.GetFaciltyLevel(army.CityId, gameConfig.MBS)
+	if level <= 0 {
+		rsp.Body.Code = constant.BuildMBSNotFound
+		return
+	}
+
+	for pos, y := range army.Gens {
+		if reqobj.Cnts[pos] > 0 {
+			if y == nil {
+				rsp.Body.Code = constant.InvalidParam
+				return
+			}
+			if !army.PositionCanModify(pos) {
+				rsp.Body.Code = constant.GeneralBusy
+				return
+			}
+		}
+	}
+	// 判断征兵数量是否合法 判断资源是否合法
+	for pos, y := range army.Gens {
+		if y == nil {
+			continue
+		}
+		lv := y.Level
+		gLevel := general.GeneralBasic.GetLevel(lv)
+		add := logic.CityFacilityService.GetSoldier(army.CityId)
+		if gLevel.Soldiers+add < reqobj.Cnts[pos]+army.SoldierArray[pos] {
+			rsp.Body.Code = constant.InvalidParam
+			return
+		}
+		var cur = time.Now().Unix()
+		army.ConscriptCntArray[pos] = reqobj.Cnts[pos]
+		army.ConscriptTimeArray[pos] = int64(gameConfig.Base.ConScript.CostTime*reqobj.Cnts[pos]) + cur - 2
+	}
+
+	var total int
+	for _, v := range reqobj.Cnts {
+		total += v
+	}
+	// 资源是否合法
+	needRes := gameConfig.NeedRes{
+		Decree: 0,
+		Grain:  gameConfig.Base.ConScript.CostGrain * total,
+		Wood:   gameConfig.Base.ConScript.CostWood * total,
+		Iron:   gameConfig.Base.ConScript.CostIron * total,
+		Stone:  gameConfig.Base.ConScript.CostStone * total,
+		Gold:   gameConfig.Base.ConScript.CostGold * total,
+	}
+	ok := logic.RoleResService.TryUseNeed(role.RId, needRes)
+	if !ok {
+		rsp.Body.Code = constant.ResNotEnough
+		return
+	}
+	// 可以更新
+	army.Cmd = data.ArmyCmdConscript
+	army.SyncExecute()
+	rspobj.Army = army.ToModel().(model.Army)
+
+	res := logic.RoleResService.Get(role.RId)
+	if res != nil {
+		rspobj.RoleRes = res.ToModel().(model.RoleRes)
+	}
 }

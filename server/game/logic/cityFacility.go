@@ -266,3 +266,21 @@ func (c *cityFacilityService) GetCapacity(rid int) int {
 	}
 	return cap
 }
+
+func (c *cityFacilityService) GetSoldier(cid int) int {
+	cf := c.GetByCid(cid)
+	facility := cf.Facility()
+	var total int
+	for _, f := range facility {
+		if f.GetLevel() > 0 {
+			values := gameConfig.FacilityConf.GetValues(f.Type, f.GetLevel())
+			additions := gameConfig.FacilityConf.GetAdditions(f.Type)
+			for i, aType := range additions {
+				if aType == gameConfig.TypeSoldierLimit {
+					total += values[i]
+				}
+			}
+		}
+	}
+	return total
+}
