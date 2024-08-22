@@ -100,6 +100,8 @@ func (w *wsServer) readMsgLoop() {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("服务端捕捉到异常", err)
+			// 不确定这样写是否正确
+			close(w.outChan)
 			w.Close()
 		}
 	}()
@@ -218,8 +220,9 @@ func (w *wsServer) Handshake() {
 			w.RemoveProperty("secretKey")
 		}
 		if data, err := utils.Zip(data); err == nil { //不报错
-			err := w.wsConn.WriteMessage(websocket.BinaryMessage, data)
-			if err != nil {
+			err1 := w.wsConn.WriteMessage(websocket.BinaryMessage, data)
+			if err1 != nil {
+				log.Println("握手失败！", err)
 				return
 			}
 		}
